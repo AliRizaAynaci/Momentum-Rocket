@@ -1,6 +1,4 @@
-#include "Arduino.h"
 #include <Wire.h>
-#include <SoftwareSerial.h>
 #include <MPU9250.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
@@ -10,7 +8,7 @@
 MPU9250 IMU(Wire, 0x68);
 Adafruit_BME280 bme; 
 
-float altitude, pressure, temp, humidity, firt_alt, max_alt = 0; // for BME280
+float altitude, pressure, temp, humidity, first_alt, max_alt = 0; // for BME280
 float roll, accelScale = 9.81 / 16384.0, gyroScale = 1.0 / 131.0, rad2deg = 180.0 / PI; // for MPU9250
 float kalman_new = 0, cov_new = 0, kalman_gain = 0, kalman_calculated = 0, kalman_old = 0 , cov_old = 0; // for Kalman Filter
 
@@ -34,7 +32,7 @@ void setup() {
     // }
   }
   else {
-    firt_alt = bme.readAltitude(SEA_LEVEL_PRESSURE);
+    first_alt = bme.readAltitude(SEA_LEVEL_PRESSURE);
   }
 
   int statusIMU = IMU.begin();
@@ -98,7 +96,7 @@ void main_parachute() {
 // ------ BME280 functions ----- 
 void get_altitude() {
   altitude = bme.readAltitude(SEA_LEVEL_PRESSURE);
-  altitude = altitude - firt_alt;
+  altitude = altitude - first_alt;
   altitude = kalman_filter(altitude);
   data.altitude = altitude;
 }

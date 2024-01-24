@@ -1,6 +1,4 @@
-#include "Arduino.h"
 #include <Wire.h>
-#include <SoftwareSerial.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
@@ -8,10 +6,10 @@
 
 Adafruit_BME280 bme; 
 
-float altitude, pressure, temp, humidity, firt_alt, max_alt = 0; // for BME280 
+float altitude, pressure, temp, humidity, first_alt, max_alt = 0; // for BME280 
 float kalman_new = 0, cov_new = 0, kalman_gain = 0, kalman_calculated = 0, kalman_old = 0 , cov_old = 0; // for Kalman Filter
 
-bool dragPisOn = false, mainPisOpen = false;
+bool dragPisOpen = false, mainPisOpen = false;
 
 typedef struct {
   float altitude, pressure, temp, humidity;
@@ -30,7 +28,7 @@ void setup() {
     }
   }
   else {
-    firt_alt = bme.readAltitude(SEA_LEVEL_PRESSURE);
+    first_alt = bme.readAltitude(SEA_LEVEL_PRESSURE);
   }
 }
 
@@ -44,7 +42,7 @@ void loop() {
   get_temp();
   get_humidity();
 
-  if (!dragPisOn) {
+  if (!dragPisOpen) {
 
     if (altitude > max_alt) {
       max_alt = altitude;
@@ -83,7 +81,7 @@ void main_parachute() {
 // ------ BME280 functions ----- 
 void get_altitude() {
   altitude = bme.readAltitude(SEA_LEVEL_PRESSURE);
-  altitude = altitude - firt_alt;
+  altitude = altitude - first_alt;
   altitude = kalman_filter(altitude);
   data.altitude = altitude
 }

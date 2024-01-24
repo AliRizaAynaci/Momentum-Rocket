@@ -1,6 +1,4 @@
-#include "Arduino.h"
 #include <Wire.h>
-#include <SoftwareSerial.h>
 #include <MPU9250.h>
 
 MPU9250 IMU(Wire, 0x68);
@@ -12,10 +10,10 @@ float roll, accelScale = 9.81 / 16384.0, gyroScale = 1.0 / 131.0, rad2deg = 180.
 float kalman_new = 0, cov_new = 0, kalman_gain = 0, kalman_calculated = 0, kalman_old = 0 , cov_old = 0; // for Kalman Filter
 
 // Control Variable
-bool dragPisOn = false;
+bool dragPisOpen = false;
 
 typedef struct {
-  float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, aci;
+  float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, roll;
 } Signal;
 
 Signal data;
@@ -41,7 +39,7 @@ void loop() {
 
   get_IMU();
 
-  if (!dragPisOn) {
+  if (!dragPisOpen) {
     if (data.acc_z < 0 || (roll > 10 || roll < 10)) {
       drag_parachute();
     }
@@ -69,7 +67,7 @@ void get_IMU() {
   data.gyro_y = IMU.getGyroY_rads();
   data.gyro_z = IMU.getGyroZ_rads();
   roll = (atan2(data.acc_y * accelScale, data.acc_z * accelScale)) * rad2deg;
-  data.aci = roll;
+  data.roll = roll;
 }
 
 void printParameters() {

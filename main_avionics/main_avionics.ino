@@ -2,16 +2,13 @@
 
 
 
-
-
-#include "Arduino.h"
-#include "LoRa_E22.h"
 #include <SoftwareSerial.h>
 #include <Wire.h>
 #include <TinyGPSPlus.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <MPU9250.h>
+#include "LoRa_E22.h"
 #include <SD.h>
 
 #define SEA_LEVEL_PRESSURE 102550
@@ -46,7 +43,7 @@ SoftwareSerial mySerial(2, 3); //
 LoRa_E22 e22ttl(&mySerial, LORA_AUX, LORA_M0, LORA_M1);
 
 float lat, lon; // GPS data
-float altitude, pressure, temp, humidity, firt_alt, max_alt = 0; // for BME280 
+float altitude, pressure, temp, humidity, first_alt, max_alt = 0; // for BME280 
 float accl_y, accl_z, roll, accelScale = 9.81 / 16384.0, gyroScale = 1.0 / 131.0, rad2deg = 180.0 / PI; // for MPU9250
 float kalman_new = 0, cov_new = 0, kalman_gain = 0, kalman_calculated = 0, kalman_old = 0 , cov_old = 0; // for Kalman Filter
 
@@ -93,7 +90,7 @@ void setup() {
       delay(10);
     }
   } else {
-    firt_alt = bme.readAltitude(SEA_LEVEL_PRESSURE);
+    first_alt = bme.readAltitude(SEA_LEVEL_PRESSURE);
   }
 
   // Init GPS
@@ -188,7 +185,7 @@ void main_parachute() {
 // ------ BME280 functions ----- 
 void get_altitude() {
   altitude = bme.readAltitude(SEA_LEVEL_PRESSURE);
-  altitude = altitude - firt_alt;
+  altitude = altitude - first_alt;
   altitude = kalman_filter(altitude);
   *(float*)(data.altitude) = altitude;
 }
@@ -217,6 +214,7 @@ void get_IMU() {
   *(float*)(data.gyro_x) = IMU.getGyroX_rads();
   *(float*)(data.gyro_y) = IMU.getGyroY_rads();
   *(float*)(data.gyro_z) = IMU.getGyroZ_rads();
+  byteArrayToFloat();
   roll = (atan2(accl_y * accelScale, accl_z * accelScale)) * rad2deg;
 }
 
@@ -233,7 +231,7 @@ void get_gps() {
 }
 
 
-void byteArrayToDouble() {
+void byteArrayToFloat() {
   memcpy(&accl_y, data.accl_y, 4);
   memcpy(&accl_z, data.accl_z, 4);
 }
@@ -253,16 +251,16 @@ void transmit_data() {
 }
 
 /**
-  Increments payload package ID from 1 to 255.
+  Increments data package ID from 1 to 255.
   Counter resets to 1 after 255.
 */
 void increment_counter() {
   if (((counter + 1) % 256) == 0) {
     counter = 1;
-    payload.package_id = counter;
+    data.package_id = counter;
   }else {
     counter++;
-    payload.package_id = counter;
+    data.package_id = counter;
   }
 }
 
