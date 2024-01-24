@@ -27,6 +27,8 @@
 #define BUZZER 9
 
 #define LORA_CHANNEL 0x12 // LoRa communication channel
+#define LORA_ADDL 21
+#define LORA_ADDH 179
 
 #define SAMPLE_RATE 5
 
@@ -45,10 +47,12 @@ LoRa_E22 e22ttl(&mySerial, LORA_AUX, LORA_M0, LORA_M1);
 
 float lat, lon; // GPS data
 float altitude, pressure, temp, humidity, firt_alt, max_alt = 0; // for BME280 
-float roll, accelScale = 9.81 / 16384.0, gyroScale = 1.0 / 131.0, rad2deg = 180.0 / PI; // for MPU9250
+float accl_y, accl_z, roll, accelScale = 9.81 / 16384.0, gyroScale = 1.0 / 131.0, rad2deg = 180.0 / PI; // for MPU9250
 float kalman_new = 0, cov_new = 0, kalman_gain = 0, kalman_calculated = 0, kalman_old = 0 , cov_old = 0; // for Kalman Filter
 
 bool dragPisOpen = false, mainPisOpen = false;
+
+int counter = 0;
 
 struct Data {
   int package_id; // Package id
@@ -57,7 +61,7 @@ struct Data {
   byte pressure[4]; // Pressure
   byte humidity[4]; // Humidity
   byte gps_lat[4]; // GPS Latitude
-  byte gps_long[4]; // GPS Longtitude
+  byte gps_lng[4]; // GPS Longtitude
   byte accl_x[4]; // X axis acceleration
   byte accl_y[4]; // Y axis acceleration
   byte accl_z[4]; // Z axis acceleration
@@ -125,10 +129,24 @@ void e22ttl_init() {
   }
 }
 
+unsigned long start, end, diff;
 void loop() {
+
+  start = millis();
+
   get_altitude();
 
+  get_pressure();
+  
+  get_temp();
+
+  get_humidity();
+
+  // get_gps();
+
   get_IMU();
+
+  increment_counter();
 
   if (!dragPisOpen) {
     
@@ -144,6 +162,14 @@ void loop() {
       main_parachute();
     }
   }
+
+  print_data_to_serial();
+
+  transmit_data();
+
+  end = millis();
+  diff = end - start; 
+  delay(200 - diff);
 
 }
 
@@ -181,8 +207,6 @@ void get_humidity() {
   humidity = bme.readHumidity();
   *(float*)(data.humidity) = humidity;
 }
-// -----------------------------
-
 
 // ------ MPU9250 function ----- 
 void get_IMU() {
@@ -193,42 +217,73 @@ void get_IMU() {
   *(float*)(data.gyro_x) = IMU.getGyroX_rads();
   *(float*)(data.gyro_y) = IMU.getGyroY_rads();
   *(float*)(data.gyro_z) = IMU.getGyroZ_rads();
- 
-  // double accl_y = byteArrayToDouble(data.accl_y);
-  // double accl_z = byteArrayToDouble(data.accl_z);
-
-  // roll = (atan2(accl_y * accelScale, accl_z * accelScale)) * rad2deg;
+  roll = (atan2(accl_y * accelScale, accl_z * accelScale)) * rad2deg;
 }
 
 // ------ GPS function ----- 
 void get_gps() {
   digitalWrite(LED_RX, HIGH);
   
+  *(float*)(data.gps_lat) = gps.location.lat();
+  *(float*)(data.gps_lng) = gps.location.lng();  
+  
+
   digitalWrite(LED_RX, LOW);
   smartdelay(1100 - (SAMPLE_RATE * 200));  
 }
 
-// double byteArrayToDouble(const byte* byteArray) {
-//     // Assuming little-endian byte order
-//     uint32_t intValue = (byteArray[0] << 0) | (byteArray[1] << 8) | (byteArray[2] << 16) | (byteArray[3] << 24);
-//     double result;
-//     memcpy(&result, &intValue, sizeof(result));
 
-//     return result;
-// }
-
-
-/*
-  Transmits the data struct over the LoRa network.
-*/
-void transmit_data() {
-  digitalWrite(LED_TX, HIGH);
-  
+void byteArrayToDouble() {
+  memcpy(&accl_y, data.accl_y, 4);
+  memcpy(&accl_z, data.accl_z, 4);
 }
 
 
+/**
+  Transmits the data struct over the LoRa network.
+*/
+void transmit_data() {
+  // digitalWrite(LED_TX, HIGH);
+  // e22ttl.sendFixedMessage(LORA_ADDL, LORA_ADDH, LORA_CHANNEL, &data, sizeoF(Data)); // if i know adress and channel
+  e22ttl.sendBroadcastFixedMessage(LORA_CHANNEL, &data, sizeof(Data));
 
+  Serial.print("Package ID: "); Serial.println(data.package_id);
+  delay(50);
+  // digitalWrite(LED_TX, LOW);
+}
 
+/**
+  Increments payload package ID from 1 to 255.
+  Counter resets to 1 after 255.
+*/
+void increment_counter() {
+  if (((counter + 1) % 256) == 0) {
+    counter = 1;
+    payload.package_id = counter;
+  }else {
+    counter++;
+    payload.package_id = counter;
+  }
+}
+
+/**
+  Prints the gathered information from the sensors to Serial monitor.
+*/
+void print_data_to_serial() {
+  Serial.print("Package ID: ");
+  Serial.print(data.package_id);
+  Serial.print(", Sicaklik: ");
+  Serial.print(*(float*)data.temp, 2);
+  Serial.print(", Irtifa: ");
+  Serial.print(*(float*)data.altitude);
+  Serial.print(", Basinc: ");
+  Serial.print(*(float*)data.pressure);
+  Serial.print(", Enlem: ");
+  Serial.print(*(float*)data.gps_lat, 6);
+  Serial.print(", Boylam: ");
+  Serial.print(*(float*)data.gps_lng, 6);
+  Serial.println();
+}
 
 /**
   Smart delay function for GPS.
@@ -260,12 +315,3 @@ float kalman_filter(float input) {
   kalman_old = kalman_calculated;
   return kalman_calculated;
 }
-
-
-
-
-
-
-
-
-
