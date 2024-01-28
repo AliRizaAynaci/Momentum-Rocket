@@ -51,21 +51,21 @@ bool dragPisOpen = false, mainPisOpen = false;
 
 int counter = 0;
 
-struct Data {
+struct Signal {
   int package_id; // Package id
-  byte temp[4]; // Temperature data
-  byte altitude[4]; // Altitude
-  byte pressure[4]; // Pressure
-  byte humidity[4]; // Humidity
-  byte gps_lat[4]; // GPS Latitude
-  byte gps_lng[4]; // GPS Longtitude
-  byte accl_x[4]; // X axis acceleration
-  byte accl_y[4]; // Y axis acceleration
-  byte accl_z[4]; // Z axis acceleration
-  byte gyro_x[4]; // X axis gyroscope
-  byte gyro_y[4]; // Y axis gyroscope
-  byte gyro_z[4]; // Z axis gyroscope
-  byte roll[4]; // Roll 
+  float temp; // Temperature data
+  float altitude; // Altitude
+  float pressure; // Pressure
+  float humidity; // Humidity
+  float gps_lat; // GPS Latitude
+  float gps_lng; // GPS Longtitude
+  float accl_x; // X axis acceleration
+  float accl_y; // Y axis acceleration
+  float accl_z; // Z axis acceleration
+  float gyro_x; // X axis gyroscope
+  float gyro_y; // Y axis gyroscope
+  float gyro_z; // Z axis gyroscope
+  float roll; // Roll 
 } data;
 
 
@@ -86,9 +86,9 @@ void setup() {
   // Init BME280
   if(!bme.begin()) {
     Serial.println(F("BME280 connection failed!"));
-    while (1) {
-      delay(10);
-    }
+    // while (1) {
+    //   delay(10);
+    // }
   } else {
     first_alt = bme.readAltitude(SEA_LEVEL_PRESSURE);
   }
@@ -100,9 +100,9 @@ void setup() {
   int statusIMU = IMU.begin();
   if (statusIMU < 0) {
     Serial.println(F("MPU9250 connected failed!"));
-    while (1) {
-      delay(10);
-    }
+    // while (1) {
+    //   delay(10);
+    // }
   }
 
   // Init LoRa
@@ -139,7 +139,7 @@ void loop() {
 
   get_humidity();
 
-  // get_gps();
+  get_gps();
 
   get_IMU();
 
@@ -187,43 +187,42 @@ void get_altitude() {
   altitude = bme.readAltitude(SEA_LEVEL_PRESSURE);
   altitude = altitude - first_alt;
   altitude = kalman_filter(altitude);
-  *(float*)(data.altitude) = altitude;
+  data.altitude = altitude;
 }
 
 void get_pressure() {
   pressure = bme.readPressure();
-  *(float*)(data.pressure) = pressure;
+  data.pressure = pressure;
 }
 
 void get_temp() {
   temp = bme.readTemperature();
-  *(float*)(data.temp) = temp;
+  data.temp = temp;
 }
 
 void get_humidity() {
   humidity = bme.readHumidity();
-  *(float*)(data.humidity) = humidity;
+  data.humidity = humidity;
 }
 
 // ------ MPU9250 function ----- 
 void get_IMU() {
   IMU.readSensor();
-  *(float*)(data.accl_x) = IMU.getAccelX_mss();
-  *(float*)(data.accl_y) = IMU.getAccelY_mss();
-  *(float*)(data.accl_z) = IMU.getAccelZ_mss();
-  *(float*)(data.gyro_x) = IMU.getGyroX_rads();
-  *(float*)(data.gyro_y) = IMU.getGyroY_rads();
-  *(float*)(data.gyro_z) = IMU.getGyroZ_rads();
-  byteArrayToFloat();
-  roll = (atan2(accl_y * accelScale, accl_z * accelScale)) * rad2deg;
+  data.accl_x = IMU.getAccelX_mss();
+  data.accl_y = IMU.getAccelY_mss();
+  data.accl_z = IMU.getAccelZ_mss();
+  data.gyro_x = IMU.getGyroX_rads();
+  data.gyro_y = IMU.getGyroY_rads();
+  data.gyro_z = IMU.getGyroZ_rads();
+  roll = (atan2(data.accl_y * accelScale, data.accl_z * accelScale)) * rad2deg;
 }
 
 // ------ GPS function ----- 
 void get_gps() {
   digitalWrite(LED_RX, HIGH);
   
-  *(float*)(data.gps_lat) = gps.location.lat();
-  *(float*)(data.gps_lng) = gps.location.lng();  
+  data.gps_lat = gps.location.lat();
+  data.gps_lng = gps.location.lng();  
   
 
   digitalWrite(LED_RX, LOW);
@@ -231,21 +230,15 @@ void get_gps() {
 }
 
 
-void byteArrayToFloat() {
-  memcpy(&accl_y, data.accl_y, 4);
-  memcpy(&accl_z, data.accl_z, 4);
-}
-
 
 /**
   Transmits the data struct over the LoRa network.
 */
 void transmit_data() {
   // digitalWrite(LED_TX, HIGH);
-  // e22ttl.sendFixedMessage(LORA_ADDL, LORA_ADDH, LORA_CHANNEL, &data, sizeoF(Data)); // if i know adress and channel
-  e22ttl.sendBroadcastFixedMessage(LORA_CHANNEL, &data, sizeof(Data));
-
-  Serial.print("Package ID: "); Serial.println(data.package_id);
+  // e22ttl.sendFixedMessage(LORA_ADDL, LORA_ADDH, LORA_CHANNEL, &data, sizeoF(Signal)); // if i know adress and channel
+  e22ttl.sendBroadcastFixedMessage(LORA_CHANNEL, &data, sizeof(Signal));
+  Serial.print(F("Package ID: ")); Serial.println(data.package_id);
   delay(50);
   // digitalWrite(LED_TX, LOW);
 }
@@ -268,18 +261,18 @@ void increment_counter() {
   Prints the gathered information from the sensors to Serial monitor.
 */
 void print_data_to_serial() {
-  Serial.print("Package ID: ");
+  Serial.print(F("Package ID: "));
   Serial.print(data.package_id);
-  Serial.print(", Sicaklik: ");
-  Serial.print(*(float*)data.temp, 2);
-  Serial.print(", Irtifa: ");
-  Serial.print(*(float*)data.altitude);
-  Serial.print(", Basinc: ");
-  Serial.print(*(float*)data.pressure);
-  Serial.print(", Enlem: ");
-  Serial.print(*(float*)data.gps_lat, 6);
-  Serial.print(", Boylam: ");
-  Serial.print(*(float*)data.gps_lng, 6);
+  Serial.print(F(", Sicaklik: "));
+  Serial.print(data.temp, 2);
+  Serial.print(F(", Irtifa: "));
+  Serial.print(data.altitude);
+  Serial.print(F(", Basinc: "));
+  Serial.print(data.pressure);
+  Serial.print(F(", Enlem: "));
+  Serial.print(data.gps_lat, 6);
+  Serial.print(F(", Boylam: "));
+  Serial.print(data.gps_lng, 6);
   Serial.println();
 }
 
