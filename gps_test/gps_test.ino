@@ -1,9 +1,9 @@
 #include <TinyGPSPlus.h>
 #include <SoftwareSerial.h>
 
-SoftwareSerial serial_gps(0, 1); // RX, TX
+SoftwareSerial serial_gps(3, 4); // RX, TX
 TinyGPSPlus gps;
-const int gpsBaud = 9600;
+static const uint32_t GPSBaud = 9600;
 
 
 typedef struct {
@@ -18,7 +18,7 @@ void setup() {
 
   Serial.begin(9600);
 
-  serial_gps.begin(gpsBaud);
+  serial_gps.begin(GPSBaud);
 
 }
 
@@ -50,9 +50,10 @@ void get_gps() {
 
 void printParameters() {
 
-  Serial.print("Enlem : "); Serial.println(data.lat);
-  Serial.print("Boylam : "); Serial.println(data.lng);
-  Serial.print("Uydu : "); Serial.println(data.satellites);
+  Serial.print(F("Location : "));
+  Serial.print(data.lat, 6);
+  Serial.print(",");
+  Serial.print(data.lng, 6);
   Serial.println("---------------------");
 }
 

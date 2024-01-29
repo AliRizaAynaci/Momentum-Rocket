@@ -36,10 +36,11 @@ File file; // SD CARD
 Adafruit_BME280 bme;
 MPU9250 IMU(Wire, 0x68);
 
-SoftwareSerial portgps(14, 15);
+SoftwareSerial serial_gps(3, 4); // RX, TX
 TinyGPSPlus gps;
+static const uint32_t GPSBaud = 9600;
 
-SoftwareSerial mySerial(2, 3); // 
+SoftwareSerial mySerial(6, 7); // RX, TX
 LoRa_E22 e22ttl(&mySerial, LORA_AUX, LORA_M0, LORA_M1);
 
 float lat, lon; // GPS data
@@ -77,8 +78,6 @@ void setup() {
   pinMode(LED_TX, OUTPUT);
   pinMode(LED_RX, OUTPUT);
   pinMode(LED_RUN, OUTPUT);
-
-  digitalWrite(LED_RUN, HIGH);
   
   // Initialize BUZZER
   pinMode(BUZZER, OUTPUT);
@@ -94,7 +93,7 @@ void setup() {
   }
 
   // Init GPS
-  portgps.begin(9600);
+  serial_gps.begin(GPSBaud);
   
   // Init IMU
   int statusIMU = IMU.begin();
@@ -107,6 +106,8 @@ void setup() {
 
   // Init LoRa
   e22ttl_init();
+  
+  digitalWrite(LED_RUN, HIGH);
 }
 
 void e22ttl_init() {
@@ -150,7 +151,7 @@ void loop() {
     if (altitude > max_alt) {
       max_alt = altitude;
     }
-    else if (max_alt - altitude > 15 && (roll > 10 || roll < 10)) {
+    else if (max_alt - altitude > 5 && (roll > 10 || roll < 10)) {
       drag_parachute();
     }
   }

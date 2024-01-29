@@ -98,21 +98,20 @@ void get_IMU() {
 
 void printParameters() {
 
-  Serial.print("AccX : "); Serial.println(data.acc_x);
-  Serial.print("AccY : "); Serial.println(data.acc_y);
-  Serial.print("AccZ : "); Serial.println(data.acc_z);
+  Serial.println("--------------------------------------");
+  Serial.print(F("AccX : ")); Serial.println(data.acc_x);
+  Serial.print(F("AccY : ")); Serial.println(data.acc_y);
+  Serial.print(F("AccZ : ")); Serial.println(data.acc_z);
   Serial.println();
-  Serial.print("GyroX : "); Serial.println(data.gyro_x);
-  Serial.print("GyroY : "); Serial.println(data.gyro_y);
-  Serial.print("GyroZ : "); Serial.println(data.gyro_z);
+  Serial.print(F("GyroX : ")); Serial.println(data.gyro_x);
+  Serial.print(F("GyroY : ")); Serial.println(data.gyro_y);
+  Serial.print(F("GyroZ : ")); Serial.println(data.gyro_z);
   Serial.println();
-  Serial.print("MagX : "); Serial.println(data.mag_x);
-  Serial.print("MagY : "); Serial.println(data.mag_y);
-  Serial.print("MagZ : "); Serial.println(data.mag_z);
-  Serial.println();
-  Serial.print("Enlem : "); Serial.println(data.lat);
-  Serial.print("Boylam : "); Serial.println(data.lng);
-  
+  Serial.print(F("Location : "));
+  Serial.print(data.lat, 6);
+  Serial.print(",");
+  Serial.print(data.lng, 6);
+  Serial.println("--------------------------------------");
 }
 
 static void smartDelay(unsigned long ms)
